@@ -37,6 +37,9 @@ class _MyHomePageState extends State<MyHomePage> {
     DataPoint(x: DateTime(2023, 2, 15), y: 40000000000000),
     DataPoint(x: DateTime(2023, 3, 1), y: 50000000000000),
     DataPoint(x: DateTime(2023, 3, 15), y: 60000000000000),
+    DataPoint(x: DateTime(2023, 3, 16), y: 60000000000000),
+    DataPoint(x: DateTime(2023, 3, 17), y: 60000000000000),
+    DataPoint(x: DateTime(2023, 3, 18), y: 60000000000000),
   ];
   @override
   Widget build(BuildContext context) {

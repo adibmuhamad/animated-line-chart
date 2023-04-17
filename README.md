@@ -2,7 +2,7 @@
 
 # animated_line_chart
 
-![Example](screenshots/example.png)
+![Example](https://raw.githubusercontent.com/adibmuhamad/animated-line-chart/main/screenshots/example.png)
 
 An animated line chart library for flutter.
  - Support for datetime axis

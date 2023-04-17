@@ -1,6 +1,6 @@
 name: animated_line_chart
 description: Animated flutter line chart. Support datetime x axis, divide region based on datetime
-version: 0.0.2
+version: 0.0.3
 homepage: https://github.com/adibmuhamad/animated-line-chart
 
 environment:

@@ -17,16 +17,19 @@ class AnimatedLineChart extends StatefulWidget {
   final Color dividerXColor;
   final Color leftChartColor;
   final Color rightChartColor;
+  final bool? fillMode;
   final bool? showXLabel;
   final bool? showYLabel;
   final bool? showYLabelOnLeft;
   final TextStyle? labelTextStyle;
   final bool? showDotAnimation;
   final bool? showLastData;
+  final bool? showPoints;
   final Duration? animatedLineDuration;
   final Duration? animatedDotDuration;
   final String? locale;
   final String? datetimeFormat;
+  final double? dotRadius;
 
   const AnimatedLineChart({
     Key? key,
@@ -45,6 +48,9 @@ class AnimatedLineChart extends StatefulWidget {
     this.locale = "en_US",
     this.showYLabelOnLeft = true,
     this.datetimeFormat = 'MMM dd',
+    this.showPoints = false,
+    this.dotRadius = 6.0,
+    this.fillMode = true,
   }) : super(key: key);
 
   @override
@@ -141,6 +147,7 @@ class _AnimatedLineChartState extends State<AnimatedLineChart>
                     dividerXColor: widget.dividerXColor,
                     leftColor: widget.leftChartColor,
                     rightColor: widget.rightChartColor,
+                    fillMode: widget.fillMode!,
                     lineAnimation: _lineAnimation.value,
                     dotAnimation: _dotAnimation.value,
                     showXLabel: widget.showXLabel!,
@@ -153,6 +160,8 @@ class _AnimatedLineChartState extends State<AnimatedLineChart>
                     maxHeight: maxHeight,
                     maxWidth: maxWidth,
                     datetimeFormat: widget.datetimeFormat!,
+                    showPoints: widget.showPoints!,
+                    dotRadius: widget.dotRadius!,
                   ),
                 );
               }),
@@ -168,6 +177,7 @@ class _LineChartPainter extends CustomPainter {
   final Color dividerXColor;
   final Color leftColor;
   final Color rightColor;
+  final bool fillMode;
   final double lineAnimation;
   final double dotAnimation;
   final bool showXLabel;
@@ -180,12 +190,15 @@ class _LineChartPainter extends CustomPainter {
   final double maxWidth;
   final double maxHeight;
   final String datetimeFormat;
+  final bool showPoints;
+  final double dotRadius;
 
   _LineChartPainter({
     required this.data,
     this.dividedX,
     required this.leftColor,
     required this.rightColor,
+    required this.fillMode,
     required this.lineAnimation,
     required this.dotAnimation,
     required this.showDetails,
@@ -199,9 +212,10 @@ class _LineChartPainter extends CustomPainter {
     required this.maxWidth,
     required this.maxHeight,
     required this.datetimeFormat,
+    required this.showPoints,
+    required this.dotRadius,
   });
 
-  double dotRadius = 6.0;
   double dashHeight = 4;
   double gapHeight = 4;
 
@@ -322,6 +336,15 @@ class _LineChartPainter extends CustomPainter {
               scaleX;
       double y = maxHeight - (data[i].y - minY) * scaleY;
 
+      if (showPoints) {
+        // Draw a circle at the current data point
+        final circlePaint = Paint()
+          ..color = Colors.black
+          ..style = PaintingStyle.fill;
+
+        canvas.drawCircle(Offset(x, y), 4, circlePaint);
+      }
+
       if (dividedXPosition < 0) dividedXPosition = 0;
 
       if (x <= dividedXPosition) {
@@ -375,22 +398,24 @@ class _LineChartPainter extends CustomPainter {
       canvas.drawPath(rightPath, paintLine);
     }
 
-    if (leftPathStarted) {
-      leftPath.lineTo(dividedXPosition, maxHeight);
-      leftPath.lineTo(leftPath.getBounds().left, maxHeight);
-      leftPath.close();
+    if (fillMode) {
+      if (leftPathStarted) {
+        leftPath.lineTo(dividedXPosition, maxHeight);
+        leftPath.lineTo(leftPath.getBounds().left, maxHeight);
+        leftPath.close();
 
-      canvas.drawPath(leftPath, paintLeftFill);
+        canvas.drawPath(leftPath, paintLeftFill);
 
-      paintLeftFill.color = Colors.transparent;
-    }
+        paintLeftFill.color = Colors.transparent;
+      }
 
-    if (rightPathStarted) {
-      rightPath.lineTo(lastX, maxHeight);
-      rightPath.lineTo(dividedXPosition, maxHeight);
-      rightPath.close();
+      if (rightPathStarted) {
+        rightPath.lineTo(lastX, maxHeight);
+        rightPath.lineTo(dividedXPosition, maxHeight);
+        rightPath.close();
 
-      canvas.drawPath(rightPath, paintRightFill);
+        canvas.drawPath(rightPath, paintRightFill);
+      }
     }
   }
 
@@ -429,6 +454,22 @@ class _LineChartPainter extends CustomPainter {
 
     // Draw X axis labels
     if (showXLabel) {
+      final paintXAxis = Paint()
+        ..strokeWidth = .5
+        ..color = Colors.grey
+        ..style = PaintingStyle.stroke;
+
+      final dashPath = Path();
+      dashPath.moveTo(0, maxHeight);
+      double x = dashHeight + gapHeight;
+
+      while (x < maxWidth) {
+        dashPath.moveTo(x, maxHeight + 7);
+        dashPath.relativeLineTo(dashHeight, 0);
+        x += dashHeight + gapHeight;
+      }
+      canvas.drawPath(dashPath, paintXAxis);
+
       for (DateTime x = minX;
           x.isBefore(maxX);
           x = x.add(maxX.difference(minX) ~/ 5)) {
