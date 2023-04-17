@@ -1,4 +1,4 @@
-[![pub package](https://img.shields.io/pub/v/animated_line_chart.svg)](https://pub.dev/packages/chart_sparkline)
+[![pub package](https://img.shields.io/pub/v/animated_line_chart.svg)](https://pub.dev/packages/animated_line_chart)
 
 # animated_line_chart
 
