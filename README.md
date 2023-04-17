@@ -1,6 +1,8 @@
+[![pub package](https://img.shields.io/pub/v/animated_line_chart.svg)](https://pub.dev/packages/chart_sparkline)
+
 # animated_line_chart
 
-![Example](example.png)
+![Example](screenshots/example.png)
 
 An animated line chart library for flutter.
  - Support for datetime axis

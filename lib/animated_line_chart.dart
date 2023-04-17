@@ -13,20 +13,25 @@ class DataPoint {
 
 class AnimatedLineChart extends StatefulWidget {
   final List<DataPoint> data;
-  final DateTime dividerX;
+  final DateTime? dividerX;
   final Color dividerXColor;
   final Color leftChartColor;
   final Color rightChartColor;
   final bool? showXLabel;
   final bool? showYLabel;
+  final bool? showYLabelOnLeft;
   final TextStyle? labelTextStyle;
   final bool? showDotAnimation;
   final bool? showLastData;
+  final Duration? animatedLineDuration;
+  final Duration? animatedDotDuration;
+  final String? locale;
+  final String? datetimeFormat;
 
   const AnimatedLineChart({
     Key? key,
     required this.data,
-    required this.dividerX,
+    this.dividerX,
     this.dividerXColor = Colors.grey,
     this.leftChartColor = Colors.blue,
     this.rightChartColor = Colors.red,
@@ -35,6 +40,11 @@ class AnimatedLineChart extends StatefulWidget {
     this.labelTextStyle = const TextStyle(color: Colors.grey, fontSize: 12),
     this.showDotAnimation = true,
     this.showLastData = true,
+    this.animatedLineDuration = const Duration(milliseconds: 500),
+    this.animatedDotDuration = const Duration(milliseconds: 500),
+    this.locale = "en_US",
+    this.showYLabelOnLeft = true,
+    this.datetimeFormat = 'MMM dd',
   }) : super(key: key);
 
   @override
@@ -56,12 +66,12 @@ class _AnimatedLineChartState extends State<AnimatedLineChart>
     super.initState();
 
     _lineAnimationController =
-        AnimationController(vsync: this, duration: const Duration(seconds: 2));
+        AnimationController(vsync: this, duration: widget.animatedLineDuration);
     _lineAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
         CurvedAnimation(parent: _lineAnimationController, curve: Curves.ease));
 
-    _dotAnimationController = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 500));
+    _dotAnimationController =
+        AnimationController(vsync: this, duration: widget.animatedDotDuration);
     _dotAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(CurvedAnimation(
         parent: _dotAnimationController, curve: Curves.easeInOut));
     if (widget.showDotAnimation!) {
@@ -80,52 +90,81 @@ class _AnimatedLineChartState extends State<AnimatedLineChart>
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onLongPressStart: (LongPressStartDetails details) {
-        setState(() {
-          showDetails = true;
-          tapPosition = details.localPosition;
-        });
-      },
-      onLongPressMoveUpdate: (LongPressMoveUpdateDetails details) {
-        setState(() {
-          tapPosition = details.localPosition;
-        });
-      },
-      onLongPressEnd: (LongPressEndDetails details) {
-        setState(() {
-          showDetails = false;
-          tapPosition = null;
-        });
-      },
-      child: AnimatedBuilder(
-          animation: Listenable.merge(
-              [_lineAnimationController, _dotAnimationController]),
-          builder: (context, _) {
-            return CustomPaint(
-              painter: _LineChartPainter(
-                data: widget.data,
-                dividedX: widget.dividerX,
-                dividerXColor: widget.dividerXColor,
-                leftColor: widget.leftChartColor,
-                rightColor: widget.rightChartColor,
-                lineAnimation: _lineAnimation.value,
-                dotAnimation: _dotAnimation.value,
-                showXLabel: widget.showXLabel!,
-                showYLabel: widget.showYLabel!,
-                labelTextStyle: widget.labelTextStyle!,
-                showDetails: showDetails,
-                tapPosition: tapPosition,
-              ),
-            );
-          }),
-    );
+    return LayoutBuilder(
+        builder: (BuildContext context, BoxConstraints constraints) {
+      // Adjust chart size
+      double maxWidth = (widget.showYLabel!)
+          ? ((widget.showYLabelOnLeft!)
+              ? constraints.maxWidth * .8
+              : constraints.maxWidth * .85)
+          : constraints.maxWidth * .9;
+      double maxHeight = (widget.showXLabel!)
+          ? constraints.maxHeight * .7
+          : constraints.maxHeight * .8;
+
+      return GestureDetector(
+        onLongPressStart: (LongPressStartDetails details) {
+          setState(() {
+            showDetails = true;
+            tapPosition = details.localPosition;
+          });
+        },
+        onLongPressMoveUpdate: (LongPressMoveUpdateDetails details) {
+          setState(() {
+            tapPosition = details.localPosition;
+          });
+        },
+        onLongPressEnd: (LongPressEndDetails details) {
+          setState(() {
+            showDetails = false;
+            tapPosition = null;
+          });
+        },
+        child: Padding(
+          padding: EdgeInsets.only(
+              left: (!widget.showYLabel!)
+                  ? 10
+                  : (widget.showYLabelOnLeft!)
+                      ? 60
+                      : 10,
+              right: 0,
+              top: 30,
+              bottom: 0),
+          child: AnimatedBuilder(
+              animation: Listenable.merge(
+                  [_lineAnimationController, _dotAnimationController]),
+              builder: (context, _) {
+                return CustomPaint(
+                  painter: _LineChartPainter(
+                    data: widget.data,
+                    dividedX: widget.dividerX,
+                    dividerXColor: widget.dividerXColor,
+                    leftColor: widget.leftChartColor,
+                    rightColor: widget.rightChartColor,
+                    lineAnimation: _lineAnimation.value,
+                    dotAnimation: _dotAnimation.value,
+                    showXLabel: widget.showXLabel!,
+                    showYLabel: widget.showYLabel!,
+                    showYLabelOnLeft: widget.showYLabelOnLeft!,
+                    labelTextStyle: widget.labelTextStyle!,
+                    showDetails: showDetails,
+                    tapPosition: tapPosition,
+                    locale: widget.locale!,
+                    maxHeight: maxHeight,
+                    maxWidth: maxWidth,
+                    datetimeFormat: widget.datetimeFormat!,
+                  ),
+                );
+              }),
+        ),
+      );
+    });
   }
 }
 
 class _LineChartPainter extends CustomPainter {
   final List<DataPoint> data;
-  final DateTime dividedX;
+  final DateTime? dividedX;
   final Color dividerXColor;
   final Color leftColor;
   final Color rightColor;
@@ -133,13 +172,18 @@ class _LineChartPainter extends CustomPainter {
   final double dotAnimation;
   final bool showXLabel;
   final bool showYLabel;
+  final bool showYLabelOnLeft;
   final TextStyle labelTextStyle;
   final bool showDetails;
   final Offset? tapPosition;
+  final String locale;
+  final double maxWidth;
+  final double maxHeight;
+  final String datetimeFormat;
 
   _LineChartPainter({
     required this.data,
-    required this.dividedX,
+    this.dividedX,
     required this.leftColor,
     required this.rightColor,
     required this.lineAnimation,
@@ -149,7 +193,12 @@ class _LineChartPainter extends CustomPainter {
     required this.dividerXColor,
     required this.showXLabel,
     required this.showYLabel,
+    required this.showYLabelOnLeft,
     required this.labelTextStyle,
+    required this.locale,
+    required this.maxWidth,
+    required this.maxHeight,
+    required this.datetimeFormat,
   });
 
   double dotRadius = 6.0;
@@ -181,36 +230,35 @@ class _LineChartPainter extends CustomPainter {
     final minX = data.reduce((a, b) => a.x.isBefore(b.x) ? a : b).x;
     final maxX = data.reduce((a, b) => a.x.isAfter(b.x) ? a : b).x;
 
-    final scaleX = size.width / maxX.difference(minX).inMilliseconds;
-    final scaleY = size.height / (maxY - minY);
+    final scaleX = maxWidth / maxX.difference(minX).inMilliseconds;
+    final scaleY = maxHeight / (maxY - minY);
 
-    var dividedXPosition =
-        (dividedX.millisecondsSinceEpoch - minX.millisecondsSinceEpoch) *
+    var dividedXPosition = (dividedX == null)
+        ? 0.0
+        : (dividedX!.millisecondsSinceEpoch - minX.millisecondsSinceEpoch) *
             scaleX;
 
     lastX = 0;
     lastY = 0;
 
     // Draw line and area
-    drawLineArea(
-        canvas, size, data, minX, minY, scaleX, scaleY, dividedXPosition);
+    drawLineArea(canvas, data, minX, minY, scaleX, scaleY, dividedXPosition);
 
     // Draw dividing line
-    drawDividingLine(canvas, size, dividedXPosition);
+    drawDividingLine(canvas, dividedXPosition);
 
     // Draw dot animation
-    drawAnimatedDot(
-        canvas, size, data, dotAnimation, minX, minY, scaleX, scaleY);
+    drawAnimatedDot(canvas, data, dotAnimation, minX, minY, scaleX, scaleY);
 
     // Draw label
-    drawLabel(canvas, size, showYLabel, showXLabel, minX, minY, maxX, maxY,
-        scaleX, scaleY);
+    drawLabel(
+        canvas, showYLabel, showXLabel, minX, minY, maxX, maxY, scaleX, scaleY);
 
     // Draw last Y
-    drawLastY(canvas, size, data, rightColor, leftColor);
+    drawLastY(canvas, data, rightColor, leftColor);
 
     // Draw detail box
-    drawDetailBox(canvas, size, data);
+    drawDetailBox(canvas, data);
   }
 
   @override
@@ -221,33 +269,28 @@ class _LineChartPainter extends CustomPainter {
         tapPosition == null;
   }
 
-  void drawDividingLine(Canvas canvas, Size size, double dividedXPosition) {
-    final paintDividingLine = Paint()
-      ..color = dividerXColor
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.0;
+  void drawDividingLine(Canvas canvas, double dividedXPosition) {
+    if (dividedX != null) {
+      final paintDividingLine = Paint()
+        ..color = dividerXColor
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.0;
 
-    double startY = 0;
+      double startY = 0;
 
-    while (startY < size.height) {
-      canvas.drawLine(
-        Offset(dividedXPosition, startY),
-        Offset(dividedXPosition, startY + dashHeight),
-        paintDividingLine,
-      );
-      startY += dashHeight + gapHeight;
+      while (startY < maxHeight) {
+        canvas.drawLine(
+          Offset(dividedXPosition, startY),
+          Offset(dividedXPosition, startY + dashHeight),
+          paintDividingLine,
+        );
+        startY += dashHeight + gapHeight;
+      }
     }
   }
 
-  void drawLineArea(
-      Canvas canvas,
-      Size size,
-      List<DataPoint> data,
-      DateTime minX,
-      double minY,
-      double scaleX,
-      double scaleY,
-      double dividedXPosition) {
+  void drawLineArea(Canvas canvas, List<DataPoint> data, DateTime minX,
+      double minY, double scaleX, double scaleY, double dividedXPosition) {
     final leftGradient = LinearGradient(
       colors: [leftColor.withOpacity(0.5), leftColor.withOpacity(0)],
       begin: Alignment.topCenter,
@@ -261,11 +304,11 @@ class _LineChartPainter extends CustomPainter {
     );
 
     final paintLeftFill = Paint()
-      ..shader = leftGradient
-          .createShader(Rect.fromLTRB(0, 0, size.width, size.height));
+      ..shader =
+          leftGradient.createShader(Rect.fromLTRB(0, 0, maxWidth, maxHeight));
     final paintRightFill = Paint()
-      ..shader = rightGradient
-          .createShader(Rect.fromLTRB(0, 0, size.width, size.height));
+      ..shader =
+          rightGradient.createShader(Rect.fromLTRB(0, 0, maxWidth, maxHeight));
 
     final leftPath = Path();
     final rightPath = Path();
@@ -277,14 +320,16 @@ class _LineChartPainter extends CustomPainter {
       double x =
           (data[i].x.millisecondsSinceEpoch - minX.millisecondsSinceEpoch) *
               scaleX;
-      double y = size.height - (data[i].y - minY) * scaleY;
+      double y = maxHeight - (data[i].y - minY) * scaleY;
 
       if (dividedXPosition < 0) dividedXPosition = 0;
 
       if (x <= dividedXPosition) {
         if (!leftPathStarted) {
-          leftPath.moveTo(x, y);
-          leftPathStarted = true;
+          if (dividedX != null && dividedXPosition != 0) {
+            leftPath.moveTo(x, y);
+            leftPathStarted = true;
+          }
         } else {
           leftPath.lineTo(x, y);
         }
@@ -293,7 +338,7 @@ class _LineChartPainter extends CustomPainter {
       } else {
         double rightLineAnimation = max(0, lineAnimation * 2 - 1);
 
-        if (x - dividedXPosition <= size.width * rightLineAnimation) {
+        if (x - dividedXPosition <= maxWidth * rightLineAnimation) {
           if (!rightPathStarted) {
             rightPath.moveTo(lastX, lastY);
             rightPathStarted = true;
@@ -304,7 +349,7 @@ class _LineChartPainter extends CustomPainter {
         }
       }
 
-      if (x >= size.width * lineAnimation) {
+      if (x >= maxWidth * lineAnimation) {
         break;
       }
     }
@@ -316,9 +361,9 @@ class _LineChartPainter extends CustomPainter {
     if (leftPathStarted) {
       paintLine.color = leftColor;
       if (dividedXPosition >= lastX) {
-        leftPath.lineTo(lastX, size.height);
+        leftPath.lineTo(lastX, maxHeight);
       } else {
-        leftPath.lineTo(dividedXPosition, size.height);
+        leftPath.lineTo(dividedXPosition, maxHeight);
       }
 
       canvas.drawPath(leftPath, paintLine);
@@ -326,14 +371,13 @@ class _LineChartPainter extends CustomPainter {
 
     if (rightPathStarted) {
       paintLine.color = rightColor;
-      rightPath.lineTo(lastX, size.height);
 
       canvas.drawPath(rightPath, paintLine);
     }
 
     if (leftPathStarted) {
-      leftPath.lineTo(dividedXPosition, size.height);
-      leftPath.lineTo(leftPath.getBounds().left, size.height);
+      leftPath.lineTo(dividedXPosition, maxHeight);
+      leftPath.lineTo(leftPath.getBounds().left, maxHeight);
       leftPath.close();
 
       canvas.drawPath(leftPath, paintLeftFill);
@@ -342,55 +386,44 @@ class _LineChartPainter extends CustomPainter {
     }
 
     if (rightPathStarted) {
-      rightPath.lineTo(lastX, size.height);
-      rightPath.lineTo(dividedXPosition, size.height);
+      rightPath.lineTo(lastX, maxHeight);
+      rightPath.lineTo(dividedXPosition, maxHeight);
       rightPath.close();
 
       canvas.drawPath(rightPath, paintRightFill);
     }
   }
 
-  void drawAnimatedDot(
-      Canvas canvas,
-      Size size,
-      List<DataPoint> data,
-      double dotAnimation,
-      DateTime minX,
-      double minY,
-      double scaleX,
-      double scaleY) {
+  void drawAnimatedDot(Canvas canvas, List<DataPoint> data, double dotAnimation,
+      DateTime minX, double minY, double scaleX, double scaleY) {
     final dotOpacity = dotAnimation;
     final dotPaint = Paint()..color = rightColor.withOpacity(dotOpacity);
 
     final lastPoint = data[data.length - 1];
     lastX = (lastPoint.x.millisecondsSinceEpoch - minX.millisecondsSinceEpoch) *
         scaleX;
-    lastY = size.height - (lastPoint.y - minY) * scaleY;
+    lastY = maxHeight - (lastPoint.y - minY) * scaleY;
 
-    if (lastX <= size.width * lineAnimation) {
+    if (lastX <= maxWidth * lineAnimation) {
       canvas.drawCircle(Offset(lastX, lastY), dotRadius, dotPaint);
     }
   }
 
-  void drawLabel(
-      Canvas canvas,
-      Size size,
-      bool showYLabel,
-      bool showXLabel,
-      DateTime minX,
-      double minY,
-      DateTime maxX,
-      double maxY,
-      double scaleX,
-      double scaleY) {
+  void drawLabel(Canvas canvas, bool showYLabel, bool showXLabel, DateTime minX,
+      double minY, DateTime maxX, double maxY, double scaleX, double scaleY) {
     // Draw Y axis labels
     if (showYLabel) {
       for (double y = minY; y <= maxY; y += (maxY - minY) / 5) {
-        double yPos = size.height - (y - minY) * scaleY;
-        final textPainter = createTextPainter(y.toStringAsFixed(1));
+        double yPos = maxHeight - (y - minY) * scaleY;
+        final textPainter = createTextPainter(compactNumber(y, locale));
         textPainter.layout();
-        textPainter.paint(canvas,
-            Offset(-textPainter.width - 10, yPos - textPainter.height / 2));
+        if (showYLabelOnLeft) {
+          textPainter.paint(canvas,
+              Offset(-textPainter.width - 10, yPos - textPainter.height / 2));
+        } else {
+          textPainter.paint(
+              canvas, Offset(maxWidth + 10, yPos - textPainter.height / 2));
+        }
       }
     }
 
@@ -401,21 +434,22 @@ class _LineChartPainter extends CustomPainter {
           x = x.add(maxX.difference(minX) ~/ 5)) {
         double xPos =
             (x.millisecondsSinceEpoch - minX.millisecondsSinceEpoch) * scaleX;
-        final textPainter = createTextPainter(DateFormat('MMM dd').format(x));
+        final textPainter =
+            createTextPainter(DateFormat(datetimeFormat).format(x));
         textPainter.layout();
         textPainter.paint(
-            canvas, Offset(xPos - textPainter.width / 10, size.height + 10));
+            canvas, Offset(xPos - textPainter.width / 10, maxHeight + 10));
       }
     }
   }
 
-  void drawLastY(Canvas canvas, Size size, List<DataPoint> data,
-      Color rightColor, Color leftColor) {
+  void drawLastY(
+      Canvas canvas, List<DataPoint> data, Color rightColor, Color leftColor) {
     final selectedDotPosition = Offset(lastX, lastY);
     final lastDataPoint = data.last;
 
     final textSpan = TextSpan(
-      text: lastDataPoint.y.toStringAsFixed(2),
+      text: compactNumber(lastDataPoint.y, locale),
       style: TextStyle(
         color: rightPathStarted ? rightColor : leftColor,
         fontWeight: FontWeight.bold,
@@ -435,7 +469,7 @@ class _LineChartPainter extends CustomPainter {
     textPainter.paint(canvas, Offset(xPos, yPos));
   }
 
-  void drawDetailBox(ui.Canvas canvas, ui.Size size, List<DataPoint> data) {
+  void drawDetailBox(ui.Canvas canvas, List<DataPoint> data) {
     // Draw detail box
     Color detailBoxTextColor = Colors.white;
     DataPoint? selectedDataPoint;
@@ -443,12 +477,13 @@ class _LineChartPainter extends CustomPainter {
       double x = tapPosition!.dx;
       final minX = data.reduce((a, b) => a.x.isBefore(b.x) ? a : b).x;
       final maxX = data.reduce((a, b) => a.x.isAfter(b.x) ? a : b).x;
-      final dividedXPosition =
-          (dividedX.millisecondsSinceEpoch - minX.millisecondsSinceEpoch) *
-              (size.width / maxX.difference(minX).inMilliseconds);
+      final dividedXPosition = (dividedX == null)
+          ? 0.0
+          : (dividedX!.millisecondsSinceEpoch - minX.millisecondsSinceEpoch) *
+              (maxWidth / maxX.difference(minX).inMilliseconds);
 
       double tappedTime =
-          (x / size.width) * maxX.difference(minX).inMilliseconds +
+          (x / maxWidth) * maxX.difference(minX).inMilliseconds +
               minX.millisecondsSinceEpoch;
 
       double smallestDiff = double.infinity;
@@ -469,7 +504,7 @@ class _LineChartPainter extends CustomPainter {
     if (showDetails && tapPosition != null && selectedDataPoint != null) {
       final textSpan = TextSpan(
         text:
-            'Date: ${DateFormat('MMM dd, yyyy').format(selectedDataPoint.x)}\nValue: ${selectedDataPoint.y.toStringAsFixed(2)}',
+            'Date: ${DateFormat('MMM dd, yyyy').format(selectedDataPoint.x)}\nValue: ${compactNumber(selectedDataPoint.y, locale)}',
         style: TextStyle(
           color: detailBoxTextColor,
           fontWeight: FontWeight.bold,
@@ -480,7 +515,7 @@ class _LineChartPainter extends CustomPainter {
         text: textSpan,
         textAlign: TextAlign.center,
         textDirection: ui.TextDirection.ltr,
-      )..layout();
+      )..layout(maxWidth: maxWidth / 3);
 
       // Define box dimensions and position
       final double boxWidth = textPainter.width + 20;
@@ -495,7 +530,7 @@ class _LineChartPainter extends CustomPainter {
 
       // Draw line from data point to x-axis
       double crossX = 0;
-      while (crossX < size.height) {
+      while (crossX < maxHeight) {
         canvas.drawLine(
           Offset(xPosition + boxWidth / 2, crossX),
           Offset(xPosition + boxWidth / 2, crossX + dashHeight),
@@ -506,7 +541,7 @@ class _LineChartPainter extends CustomPainter {
 
       // Draw line from data point to y-axis
       double crossY = 0;
-      while (crossY < size.width) {
+      while (crossY < maxWidth) {
         canvas.drawLine(
           Offset(crossY, yPosition + boxHeight / 2),
           Offset(crossY + dashHeight, yPosition + boxHeight / 2),
@@ -530,6 +565,15 @@ class _LineChartPainter extends CustomPainter {
 
       // Draw text
       textPainter.paint(canvas, Offset(xPosition + 10, yPosition + 10));
+    }
+  }
+
+  String compactNumber(double value, String locale) {
+    try {
+      var f = NumberFormat.compact(locale: locale);
+      return f.format(value);
+    } catch (_) {
+      return '';
     }
   }
 }

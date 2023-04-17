@@ -31,22 +31,23 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   final List<DataPoint> data = [
-    DataPoint(x: DateTime(2023, 1, 1), y: 10),
-    DataPoint(x: DateTime(2023, 1, 15), y: 30),
-    DataPoint(x: DateTime(2023, 2, 1), y: 20),
-    DataPoint(x: DateTime(2023, 2, 15), y: 40),
-    DataPoint(x: DateTime(2023, 3, 1), y: 50),
-    DataPoint(x: DateTime(2023, 3, 15), y: 60),
+    DataPoint(x: DateTime(2023, 1, 1), y: 10000000000000),
+    DataPoint(x: DateTime(2023, 1, 15), y: 3000000000000),
+    DataPoint(x: DateTime(2023, 2, 1), y: 20000000000000),
+    DataPoint(x: DateTime(2023, 2, 15), y: 40000000000000),
+    DataPoint(x: DateTime(2023, 3, 1), y: 50000000000000),
+    DataPoint(x: DateTime(2023, 3, 15), y: 60000000000000),
   ];
   @override
   Widget build(BuildContext context) {
+    Size size = MediaQuery.of(context).size;
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.title),
       ),
       body: Center(
         child: SizedBox(
-          width: 300, // set the desired width
+          width: size.width, // set the desired width
           height: 200, // set the desired height
           child: AnimatedLineChart(
             data: data,
